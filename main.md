@@ -403,17 +403,26 @@ print(vars(args))
 ```
 
 ```python
-args = ModelArgs(batch_size=32, d_model=64, hidden_dim=512, num_blocks=8, num_q_heads=32, num_kv_heads=16, vocab_size=26904)
+args = ModelArgs(batch_size=32, d_model=64, hidden_dim=512, num_blocks=8, num_q_heads=32, num_kv_heads=16, vocab_size=len(vocab_ja))
 transformer = TransformerSparseEmbeddings(args)
 transformer = transformer.to(args.device)
 ```
 
+```python
+for (i, j) in train_iter:
+    print(i.shape, j.shape)
+    break
+```
+
+```python
+len(train_iter)
+```
 
 ```python
 loss_fn = torch.nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = torch.optim.Adam(transformer.parameters(), lr=0.0001)
 
-def train_epoch(model, train_iter, optimizer, device):
+def train_epoch(model, train_iter, optimizer, device): # https://chatgpt.com/c/2be13c26-50d8-4583-97b6-397c1fe2d028
     model.train()
     losses = 0
     for i, (x, y) in enumerate(train_iter):
@@ -428,5 +437,35 @@ def train_epoch(model, train_iter, optimizer, device):
         optimizer.step()
         losses += loss.item()
     return losses / len(train_iter)
+```
+
+```python
+
+def evaluate(model, val_iter, device):
+    model.eval()
+    losses = 0
+    for idx, (src, tgt) in (enumerate(val_iter)):
+        src = src.to(device)
+        tgt = tgt.to(device)
+        tgt_input = tgt[:-1, :]
+        logits = model(src, 0)
+        tgt_out = tgt[1:,:]
+        loss = loss_fn(logits.reshape(-1, logits.shape[-1]), tgt_out.reshape(-1))
+        losses += loss.item()
+    return losses / len(val_iter)
+```
+
+```python
+import time
+for epoch in range(1, args.epochs+1):
+    start_time = time.time()
+    train_loss = train_epoch(transformer, train_iter, optimizer, args.device)
+    end_time = time.time()
+    print((f"Epoch: {epoch}, Train loss: {train_loss:.3f}, "
+          f"Epoch time = {(end_time - start_time):.3f}s"))
+```
+
+```python
+
 ```
 
